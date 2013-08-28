@@ -59,7 +59,13 @@ namespace Tailcop
                                 result = true;
 
                                 calls.Add(insn);
+                                //Console.WriteLine("SAME!!: " + methodRef.FullName);
                             }
+                            //else
+                            //{
+                            //    Console.WriteLine("Other1: " + methodRef.FullName);
+                            //    Console.WriteLine("Other2: " + method.FullName);
+                            //}
                         }
                     }
                     foreach (var call in calls)
