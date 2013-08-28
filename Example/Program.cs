@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 
 namespace Example
 {
@@ -9,27 +6,25 @@ namespace Example
     {
         static void Main(string[] args)
         {
-            var watch = new Stopwatch();
-            watch.Start();
+            CallAdd(40404, 50505);
+            CallSum(CreateNumbers());
+        }
 
-            int x = 10000;
-            int y = 10000;
-            Console.WriteLine("Add({0}, {1}) = {2}", x, y, Add(x, y));
-
-            //Console.WriteLine("Add1({0}, {1}) = {2}", x, y, Add1(x, y));
-
-            int[] array = new int[10000];
+        static int[] CreateNumbers()
+        {
+            var rand = new Random();
+            int[] array = new int[100000];
             for (int i = 0; i < array.Length; i++)
             {
-                array[i] = 100;
+                array[i] = rand.Next(1, 100);
             }
+            return array;
+        }
 
-            Console.WriteLine("Sum({0} elements) = {1}", array.Length, Sum(array));
-
-            //Console.WriteLine("Sum1({0} elements) = {1}", array.Length, Sum1(array));
-
-            watch.Stop();
-            Console.WriteLine("Elapsed ticks: {0}", watch.ElapsedTicks);
+        static void CallAdd(int x, int y)
+        {
+            Console.Write("Add({0}, {1})", x, y);
+            Console.WriteLine(" = {0}", Add(x, y));
         }
 
         static int Add(int x, int y)
@@ -42,52 +37,24 @@ namespace Example
             return y;
         }
 
-        static int Add1(int x, int y)
+        static void CallSum(int[] array)
         {
-            return Redux(Repeat(1, x), (a, b) => a + b, y);
+            Console.Write("Sum({0} numbers)", array.Length);
+            Console.WriteLine(" = {0}", Sum(array, 0, 0));
         }
 
-        private static IEnumerable<T> Repeat<T>(T val, int count)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                yield return val;
-            }
-        }
-
-        static int Sum(int[] array)
-        {
-            return RecursiveSum(array, 0, 0);
-        }
-
-        static int RecursiveSum(int[] array, int index, int acc)
+        static int Sum(int[] array, int index, int acc)
         {
             if (index < array.Length)
             {
-                return RecursiveSum(array, index + 1, acc + array[index]);
+                return Sum(array, index + 1, acc + array[index]);
             }
 
             return acc;
         }
 
-        static int Sum1(IEnumerable<int> vals)
-        {
-            return Redux(vals, (x, y) => x + y, 0);
-        }
+        
 
-        delegate TR Accumulator<in T, TR>(T x, TR y);
-
-        static TR Redux<T, TR>(IEnumerable<T> inputs, Accumulator<T, TR> accr, TR accd)
-        {
-            var list = inputs.ToList();
-            if (list.Any())
-            {
-                var head = list.First();
-                var tail = list.Skip(1);
-                return Redux(tail, accr, accr(head, accd));
-            }
-
-            return accd;
-        }
+        
     }
 }
