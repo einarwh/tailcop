@@ -84,26 +84,6 @@ namespace Tailcop
             return true;
         }
 
-        private void TamperWithAfter(MethodDefinition method, IEnumerable<Instruction> calls)
-        {
-            foreach (var call in calls)
-            {
-                var il = method.Body.GetILProcessor();
-                int counter = method.Parameters.Count;
-                var last = call;
-                do
-                {
-                    var starg = il.Create(OpCodes.Starg, --counter);
-                    il.InsertAfter(last, starg);
-                    last = starg;
-                }
-                while (counter > 0);
-                var loop = il.Create(OpCodes.Br_S, method.Body.Instructions[0]);
-                il.InsertAfter(last, loop);
-                il.Remove(call);
-            }
-        }
-
         private void TamperWith(MethodDefinition method, IEnumerable<Instruction> calls)
         {
             foreach (var call in calls)
@@ -115,55 +95,12 @@ namespace Tailcop
                     var starg = il.Create(OpCodes.Starg, --counter);
                     il.InsertBefore(call, starg);
                 }
-                var loop = il.Create(OpCodes.Br_S, method.Body.Instructions[0]);
+                var start = method.Body.Instructions[0];
+                var loop = il.Create(OpCodes.Br_S, start);
                 il.InsertBefore(call, loop);
                 il.Remove(call.Next); // Ret
                 il.Remove(call);
             }
         }
-
-        private bool TamperWith1(AssemblyDefinition assembly)
-        {
-            bool result = false;
-
-            foreach (TypeDefinition type in assembly.MainModule.Types)
-            {
-                foreach (MethodDefinition method in type.Methods)
-                {
-                    var calls = new List<Instruction>();
-                    foreach (var insn in method.Body.Instructions)
-                    {
-                        if (insn.OpCode == OpCodes.Call)
-                        {
-                            var methodRef = (MethodReference)insn.Operand;
-                            if (methodRef == method)
-                            {
-                                result = true;
-                                calls.Add(insn);
-                            }
-                        }
-                    }
-                    foreach (var call in calls)
-                    {
-                        var il = method.Body.GetILProcessor();
-                        int counter = method.Parameters.Count;
-                        var last = call;
-                        do
-                        {
-                            var starg = il.Create(OpCodes.Starg, --counter);
-                            il.InsertAfter(last, starg);
-                            last = starg;
-                        }
-                        while (counter > 0);
-                        var loop = il.Create(OpCodes.Br_S, method.Body.Instructions[0]);
-                        il.InsertAfter(last, loop);
-                        il.Remove(call);
-                    }
-                }
-            }
-
-            return result;
-        }
-
     }
 }
