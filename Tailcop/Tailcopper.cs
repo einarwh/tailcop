@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -40,47 +41,14 @@ namespace Tailcop
             return assembly;
         }
 
-        private Map<MethodDefinition, IEnumerable<Instruction>> FindTailCalls(AssemblyDefinition assembly)
-        {
-            var result = new Map<MethodDefinition, IEnumerable<Instruction>>();
-
-            foreach (TypeDefinition type in assembly.MainModule.Types)
-            {
-                foreach (MethodDefinition method in type.Methods)
-                {
-                    var calls = new List<Instruction>();
-                    foreach (var insn in method.Body.Instructions)
-                    {
-                        if (insn.OpCode == OpCodes.Call)
-                        {
-                            var methodRef = (MethodReference)insn.Operand;
-                            if (methodRef == method)
-                            {
-                                // TODO: require tail call! 
-                                // Next instruction must be RET.
-                                calls.Add(insn);
-                            }
-                        }
-                    }
-                    if (calls.Count() > 0) 
-                    {
-                        result[method] = calls;
-                    }
-                }
-            }
-
-            return result;
-
-        }
-
-        private Map<MethodDefinition, IList<Instruction>> FindTailCalls(AssemblyDefinition assembly)
+        private Dictionary<MethodDefinition, IEnumerable<Instruction>> FindTailCalls(AssemblyDefinition assembly)
         {
             return assembly.MainModule.Types
                 .SelectMany(t => t.Methods)
-                .Select(m => new Tuple(m, FindTailCalls(m.Body.Instructions)))
-                .Where(tp => tp.Item2.Count() > 0)
-                .GroupBy(tp => tp.Item1, tp => tp.Item2);
-            // ToDictionary somehow.
+                .Select(m => Tuple.Create(m, FindTailCalls(m)))
+                .Where(tp => tp.Item2.Any())
+                .GroupBy(tp => tp.Item1, tp => tp.Item2)
+                .ToDictionary(g => g.Key, g => g.SelectMany(it => it));
         }
 
         private IList<Instruction> FindTailCalls(MethodDefinition method) 
@@ -105,18 +73,18 @@ namespace Tailcop
 
         private bool TamperWith(AssemblyDefinition assembly) 
         {
-            var map = FindTailCalls();
-            if (map.Count() == 0) return false;
+            var map = FindTailCalls(assembly);
+            if (!map.Any()) return false;
 
-            foreach (var method in callMap.Keys)
+            foreach (var method in map.Keys)
             {
-                TamperWith(method, callMap[method]);
+                TamperWith(method, map[method]);
             }
 
             return true;
         }
 
-        private bool TamperWith(MethodDefinition method, List<Instruction>> calls) 
+        private void TamperWithAfter(MethodDefinition method, IEnumerable<Instruction> calls)
         {
             foreach (var call in calls)
             {
@@ -132,6 +100,24 @@ namespace Tailcop
                 while (counter > 0);
                 var loop = il.Create(OpCodes.Br_S, method.Body.Instructions[0]);
                 il.InsertAfter(last, loop);
+                il.Remove(call);
+            }
+        }
+
+        private void TamperWith(MethodDefinition method, IEnumerable<Instruction> calls)
+        {
+            foreach (var call in calls)
+            {
+                var il = method.Body.GetILProcessor();
+                int counter = method.Parameters.Count;
+                while (counter > 0)
+                {
+                    var starg = il.Create(OpCodes.Starg, --counter);
+                    il.InsertBefore(call, starg);
+                }
+                var loop = il.Create(OpCodes.Br_S, method.Body.Instructions[0]);
+                il.InsertBefore(call, loop);
+                il.Remove(call.Next); // Ret
                 il.Remove(call);
             }
         }
