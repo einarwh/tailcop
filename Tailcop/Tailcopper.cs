@@ -99,7 +99,7 @@ namespace Tailcop
                         {
                             if (insn.Next != null && insn.Next.OpCode == OpCodes.Ret)
                             {
-                                calls.Add(insn);
+                                calls.Add(insn);                            
                             }
                         }
                     }
@@ -148,7 +148,6 @@ namespace Tailcop
 
         public Dictionary<Instruction, Node> AnalyzeMethod(MethodDefinition method)
         {
-            // Create map!
             var insn = method.Body.Instructions[0];
             var map = new Dictionary<Instruction, Node>();
             var root = new Node(method, insn);
@@ -173,7 +172,10 @@ namespace Tailcop
                     }
                     foreach (var t in targets)
                     {
-                        map[t] = new Node(method, t);
+                        if (!map.ContainsKey(t))
+                        {
+                            map[t] = new Node(method, t);
+                        }
                     }
                 }
                 insn = insn.Next;
@@ -235,6 +237,7 @@ namespace Tailcop
 
         private void Rewrite(MethodDefinition method, IEnumerable<Instruction> calls)
         {
+            Console.WriteLine(method.Name);
             foreach (var call in calls)
             {
                 var il = method.Body.GetILProcessor();

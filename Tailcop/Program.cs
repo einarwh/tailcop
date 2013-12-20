@@ -14,7 +14,7 @@ namespace Tailcop
             }
 
             var copper = args.Length == 1 ? new Tailcopper() : new Tailcopper(args[1]);
-            copper.TamperWith(args[0]);
+            copper.Rewrite(args[0]);
         }
     }
 }

@@ -70,6 +70,7 @@ namespace Tailcop
 
         private Func<EvalStack, EvalStack> CreateG()
         {
+            Console.WriteLine("CreateG: {0} -> {1}", _first.OpCode.Name, _last.OpCode.Name);
             return CreateComposite(_first, _last);
         }
 
@@ -106,6 +107,12 @@ namespace Tailcop
             {
                 // Prototypical *this* producer!!
                 return stack => stack.Push(true);
+            }
+
+            if (op == OpCodes.Dup)
+            {
+                // Prototypical *this* propagator!!
+                return stack => stack.Push(stack.Peek());
             }
  
             return CreateConsumerF(insn);
@@ -268,9 +275,16 @@ namespace Tailcop
             while (!IsBranching(insn))
             {
                 insn = insn.Next;
-                if (insn == null || IsReturn(insn)) { return; }
+                if (map.Keys.Contains(insn))
+                {
+                    _targets.Add(map[insn]);
+                    return;
+                }
+                if (insn == null || IsReturn(insn))
+                {
+                    return;
+                }
             }
-
             var ot = insn.OpCode.OperandType;
             var lbls = new List<Instruction>();
             if (ot == OperandType.InlineSwitch)
@@ -296,7 +310,7 @@ namespace Tailcop
         {
             if (G == null)
             {
-                throw new NullReferenceException("Need to init G.");
+                throw new NullReferenceException("Need to init G for node " + _id);
             }
 
             var x = set.Except(_I);
@@ -312,6 +326,11 @@ namespace Tailcop
         }
 
         public override string ToString()
+        {
+            return CreateCfgString(this, new List<Node>());
+        }
+
+        public string CreateString()
         {
             var sb = new StringBuilder(); 
             sb.AppendLine("NODE " + _id).AppendLine(" > Instructions");
@@ -345,6 +364,26 @@ namespace Tailcop
             {
                 sb.Append("   " + t._id + Environment.NewLine);
             }
+            return sb.ToString();
+        }
+
+        public static string CreateCfgString(Node n, List<Node> seen)
+        {
+            if (seen.Contains(n))
+            {
+                return "";
+            }
+
+            seen.Add(n);
+
+            var sb = new StringBuilder()
+                .AppendLine(n.CreateString());
+            
+            foreach (var t in n._targets)
+            {
+                sb.AppendLine(CreateCfgString(t, seen));
+            }
+
             return sb.ToString();
         }
 
